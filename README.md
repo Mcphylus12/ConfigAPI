@@ -3,8 +3,11 @@
 - Frontend
 - File storage store
 - DB store
-- "secondary stores"
 - AMQP notifier
+- File store Notifier to write updated configs to a shred file store for resilient usage
+- Some way to enforce schemas against configKeys while supoprting wildcards
+- *STRETCH* Define preset "expected" configurations and populate open api spec for them wiith correct request/response data
+- Fro "expected" config have frontend create a easier to use UI 
 
 
 ## FE
