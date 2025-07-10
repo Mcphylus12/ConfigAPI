@@ -4,12 +4,44 @@
 - File storage store
 - DB store
 - AMQP notifier
-- Frontend improvements
-- Schemas against configKeys supporting wildcards
+- File store Notifier to write updated configs to a shred file store for resilient usage
+- Some way to enforce schemas against configKeys while supoprting wildcards
+- *STRETCH* Define preset "expected" configurations and populate open api spec for them wiith correct request/response data
+- Fro "expected" config have frontend create a easier to use UI 
 
 
 ## FE
 - configKey dot seperation repped as breadcrumbs
 - 2 text boxes showing full layered json that is readonly and other with just the top layer for editing
 - Listing configs
-- Use schemas to generate better editor
+
+## Overview
+
+ConfigApi is a standalone service that at it's core is a string -> JSON key value store. It has one addition feature which is where all the value lives. keys are dot separated strings that allows inheritance when retrieving the JSON. EG
+
+1. set `service` to
+```JSON
+{
+   "someCommonServiceConfig": "aValue"
+}
+```
+2.set `service.Testservice` to
+```JSON
+{
+   "testServiceSpecialConfig": 99
+}
+```
+
+3. get config for `service.Testservice`
+
+the result will be 
+```JSON
+{
+   "testServiceSpecialConfig": 99,
+   "someCommonServiceConfig": "aValue"
+}
+```
+
+The service starts at the root and overlays more specific JSON as it checks if config is set for more specific keys.
+
+The aim is single solution that can handle the back office configuration for a whole system. 
