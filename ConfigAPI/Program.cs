@@ -1,5 +1,10 @@
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Mime;
 using System.Text.Json.Nodes;
+using static System.Net.Mime.MediaTypeNames;
+
+var site = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Index.html"));
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,9 +30,11 @@ app.MapOpenApi();
 
 app.UseCors();
 
-app.MapGet("/api/{configKey}", async ([FromRoute] string configKey, [FromServices] IConfigService configService) =>
+app.MapGet("/", () => Results.Content(site, MediaTypeNames.Text.Html));
+
+app.MapGet("/api/{configKey}", async ([FromRoute] string configKey, [FromServices] IConfigService configService, [FromQuery] bool shallow = false) =>
 {
-    return Results.Ok(await configService.Get(configKey));
+    return Results.Ok(await configService.Get(configKey, shallow));
 });
 
 app.MapPost("/api/{configKey}", async ([FromRoute] string configKey, [FromBody]JsonNode updateDoc, [FromServices] IConfigService configService) =>
@@ -40,7 +47,7 @@ app.Run();
 
 public interface IConfigService
 {
-    Task<JsonNode> Get(string configKey);
+    Task<JsonNode> Get(string configKey, bool shallow);
 
     Task Set(string configKey, JsonNode jsonDocument);
 }
@@ -58,8 +65,17 @@ public class ConfigService : IConfigService
         this.notifiers = notifiers;
     }
 
-    public async Task<JsonNode> Get(string configKey)
+    public async Task<JsonNode> Get(string configKey, bool shallow)
     {
+        if (shallow)
+        {
+            var text = await store.Get(configKey);
+
+            var newDocument = text is null ? null : JsonNode.Parse(text);
+
+            return newDocument ?? new JsonObject();
+        }
+
         if (await cache.TryGet(configKey, out var cachedItem))
         {
             return cachedItem!;

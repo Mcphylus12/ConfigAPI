@@ -1,0 +1,230 @@
+﻿﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Test Manager</title>
+</head>
+<body v-scope @vue:mounted="mounted" v-cloak>
+    <h2 class="title" @click="toggle()">Config Api</h2>
+    <div class="container">
+        <div class="clear left section" v-if="shallowConfig != null">
+            <textarea v-model="shallowConfig" class="fill"></textarea>
+        </div>
+        <div class="right section" v-if="fullConfig != null">
+            <pre>{{ fullConfig }}</pre>
+        </div>
+        <div class="bottom section relative">
+            <input type="text" v-model="configPath" />
+            <button @click="loadConfig()">
+                Load
+            </button>
+            <button @click="save()">
+                Save
+            </button>
+        </div>
+    </div>
+
+
+
+    <script type="module">
+        import { createApp } from 'https://unpkg.com/petite-vue?module'
+
+        createApp({
+          configPath: null,
+          fullConfig: null,
+          shallowConfig: null,
+          mounted() {
+          },
+          loadConfig() {
+            fetch("/api/"+this.configPath)
+                .then((data) => data.json())
+                .then(res => this.fullConfig = res);
+            fetch("/api/"+this.configPath+"?shallow=true")
+                .then((data) => data.json())
+                .then(res => this.shallowConfig = JSON.stringify(res, null, 2));
+          },
+          save() {
+            const myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+
+            fetch("/api/"+this.configPath, {
+                    method: "POST",
+                    body: this.shallowConfig,
+                    headers: myHeaders,
+                })
+                .then((data) => this.loadConfig());
+          }
+        }).mount()
+    </script>
+    <style>
+        body, html {
+            padding: 0;
+            margin: 0;
+            font-family: system-ui;
+            --clr-bg: #c9c9c9;
+            --clr-bg2: #b1b1b1;
+            --clr-font: #000000;
+            --clr-accent: #273c75;
+            --clr-dark-accent: #192a56;
+            color: var(--clr-font);
+            font-size: larger;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 3fr 1fr;
+            height: 100vh;
+            width: 100%;
+            align-content: stretch;
+            background-color: var(--clr-bg);
+        }
+
+        .clear {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .fill {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            padding: 0;
+            resize: none;
+        }
+
+        .section {
+            border: 1px solid var(--clr-accent);
+            padding: 0.5rem;
+        }
+
+        .bottom {
+            grid-column: span 2;
+        }
+
+        .testfile, .folder, .up {
+            cursor: pointer;
+        }
+
+        .file {
+            cursor: default;
+        }
+
+        .fileentry {
+            position: relative;
+            margin-bottom: 0.2rem;
+            box-sizing: border-box;
+            transition: scale 0.1s linear;
+        }
+
+            .fileentry .name {
+                position: absolute;
+                left: 5rem;
+            }
+
+            .fileentry .new-link {
+                position: absolute;
+                right: 0.5rem;
+                cursor: pointer;
+                transition: all 0.1s linear;
+                display: inline;
+                padding: 0 4px;
+            }
+
+                .fileentry .new-link:hover {
+                    background-color: var(--clr-accent);
+                    color: var(--clr-bg);
+                }
+
+            .fileentry:nth-child(odd) {
+                background-color: var(--clr-bg2);
+            }
+
+            .fileentry:hover {
+                border: 1px solid var(--clr-accent);
+                scale: 102%;
+            }
+
+        .title {
+            background-color: var(--clr-bg);
+            text-align: center;
+            margin: 0;
+            padding: 1.5rem;
+            color: var(--clr-accent);
+        }
+
+        button {
+            background-color: var(--clr-dark-accent); /* Green */
+            border: none;
+            color: var(--clr-bg);
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            transition: all .1s ease-in;
+            font-size: inherit;
+        }
+
+            button:hover {
+                filter: brightness(80%);
+            }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            align-items: stretch;
+        }
+
+        .mb-half {
+            margin-bottom: 0.5rem;
+        }
+
+        .mb-1 {
+            margin-bottom: 1rem;
+        }
+
+        .float-right {
+            float: right;
+        }
+
+        .handler {
+            border-top: 1px solid var(--clr-accent);
+            margin-top: 0.5rem;
+        }
+
+            .handler h4 {
+                margin-top: 0.25rem;
+            }
+
+            .handler textarea {
+                font-size: larger;
+                width: 550px;
+                min-width: 550px;
+                color: var(--clr-font);
+                background-color: var(--clr-bg2);
+            }
+
+        .flex-w-full > * {
+            flex: 1 0 auto;
+        }
+
+        [v-cloak] {
+            display: none;
+        }
+
+        .relative {
+            position: relative;
+        }
+
+        .abs-top-right {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+        }
+    </style>
+</body>
+</html>
