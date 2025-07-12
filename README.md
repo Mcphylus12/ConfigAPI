@@ -1,20 +1,21 @@
 ## TODO
 
-- Load config in at boot
 - File storage store
 - DB store
 - AMQP notifier
 - File store Notifier to write updated configs to a shred file store for resilient usage
-- *STRETCH* Define preset "expected" configurations and populate open api spec for them wiith correct request/response data
-- From "expected" config have frontend create a easier to use UI 
 - Better error handling for schema validation failures
+- Use stores for schemas
 
 
 ## FE
-- configKey dot seperation repped as breadcrumbs
-- 2 text boxes showing full layered json that is readonly and other with just the top layer for editing
 - Listing configs
 - working with Schemas
+
+## Phase 2
+- *STRETCH* Define preset "expected" configurations and populate open api spec for them wiith correct request/response data
+- From "expected" config have frontend create a easier to use UI 
+- configKey dot seperation repped as breadcrumbs
 
 ## Overview
 
