@@ -1,3 +1,4 @@
+using ConfigAPI;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mime;
@@ -22,6 +23,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IConfigCache, MemoryConfigCache>();
 builder.Services.AddSingleton<IConfigService, ConfigService>();
+builder.Services.AddSingleton<ISchemaService, SchemaService>();
 builder.Services.AddSingleton<IConfigStore, MemoryStore>();
 
 var app = builder.Build();
@@ -31,6 +33,32 @@ app.MapOpenApi();
 app.UseCors();
 
 app.MapGet("/", () => Results.Content(site, MediaTypeNames.Text.Html));
+
+app.MapPost("/api/schema/{configKey}", async ([FromRoute] string configKey, [FromBody] JsonNode updateDoc, [FromServices] ISchemaService schemaService) =>
+{
+    await schemaService.Set(configKey, updateDoc);
+    return Results.Ok();
+});
+
+app.MapGet("/api/schema", async ([FromServices] ISchemaService schemaService) =>
+{
+    var schemas = await schemaService.Get();
+    return Results.Ok(schemas.Select(schema => schema.Key));
+});
+
+app.MapGet("/api/schema/{configKey}", async ([FromRoute] string configKey, [FromServices] ISchemaService schemaService) =>
+{
+    var schema = await schemaService.GetFromSchemaKey(configKey);
+
+    if (schema is null) return Results.NotFound();
+
+    return Results.Ok(schema.Node);
+});
+
+app.MapGet("/api/configs", async ([FromServices] IConfigService configService) =>
+{
+    return Results.Ok(await configService.List());
+});
 
 app.MapGet("/api/{configKey}", async ([FromRoute] string configKey, [FromServices] IConfigService configService, [FromQuery] bool shallow = false) =>
 {
@@ -43,12 +71,13 @@ app.MapPost("/api/{configKey}", async ([FromRoute] string configKey, [FromBody]J
     return Results.Ok();
 });
 
+
 app.Run();
 
 public interface IConfigService
 {
     Task<JsonNode> Get(string configKey, bool shallow);
-
+    Task<IEnumerable<string>> List();
     Task Set(string configKey, JsonNode jsonDocument);
 }
 
@@ -57,12 +86,14 @@ public class ConfigService : IConfigService
     private readonly IConfigCache cache;
     private readonly IConfigStore store;
     private readonly IEnumerable<IUpdateNotifier> notifiers;
+    private readonly ISchemaService schemaService;
 
-    public ConfigService(IConfigCache cache, IConfigStore store, IEnumerable<IUpdateNotifier> notifiers)
+    public ConfigService(IConfigCache cache, IConfigStore store, IEnumerable<IUpdateNotifier> notifiers, ISchemaService schemaService)
     {
         this.cache = cache;
         this.store = store;
         this.notifiers = notifiers;
+        this.schemaService = schemaService;
     }
 
     public async Task<JsonNode> Get(string configKey, bool shallow)
@@ -123,9 +154,55 @@ public class ConfigService : IConfigService
 
     public async Task Set(string configKey, JsonNode jsonDocument)
     {
-        await store.Set(configKey, jsonDocument.ToJsonString());
-        await cache.Clear(configKey);
+        var schemas = await schemaService.Get(configKey);
+
+        if (schemas.Any())
+        {
+            var oldConfig = await Get(configKey, shallow: true);
+            await cache.Clear(configKey);
+            await store.Set(configKey, jsonDocument.ToJsonString());
+            var fullNewConfig = await Get(configKey, false);
+
+            SchemaValidationResult result = new SchemaValidationResult()
+            {
+                Ok = true
+            };
+            foreach (var schema in schemas)
+            {
+                result.Add(await schema.Validate(fullNewConfig));
+            }
+
+            if (!result.Ok)
+            {
+                await cache.Clear(configKey);
+                await store.Set(configKey, oldConfig.ToJsonString());
+                throw result.ToException();
+            }
+        }
+        else
+        {
+            await cache.Clear(configKey);
+            await store.Set(configKey, jsonDocument.ToJsonString());
+        }
+
         await Task.WhenAll(notifiers.Select(n => n.Notify(configKey)));
+    }
+
+    public Task<IEnumerable<string>> List() => store.List();
+}
+
+internal class SchemaValidationResult
+{
+    public bool Ok { get; internal set; }
+
+    public void Add(SchemaValidationResult newData)
+    {
+        Ok = Ok && newData.Ok;
+    }
+
+    internal Exception ToException()
+    {
+        throw new Exception();
     }
 }
 
@@ -169,6 +246,7 @@ public class MemoryConfigCache : IConfigCache
 public interface IConfigStore
 {
     Task<string?> Get(string configKey);
+    Task<IEnumerable<string>> List();
     Task Set(string configKey, string v);
 }
 
@@ -180,6 +258,8 @@ public class MemoryStore : IConfigStore
     {
         return Task.FromResult(data.TryGetValue(configKey, out var c) ? c : null);
     }
+
+    public Task<IEnumerable<string>> List() => Task.FromResult<IEnumerable<string>>(data.Keys);
 
     public Task Set(string configKey, string newData)
     {
