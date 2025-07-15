@@ -22,8 +22,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IConfigCache, MemoryConfigCache>();
 builder.Services.AddSingleton<IConfigService, ConfigService>();
 builder.Services.AddSingleton<ISchemaService, SchemaService>();
-builder.Services.AddSingleton<IConfigStore, MemoryStore>();
+builder.Services.AddSingleton<IConfigStore>(new FileStore("./configs"));
 builder.Services.AddHostedService<StartupConfigLoader>();
+builder.Services.AddTransient<IUpdateNotifier, ConsoleNotifier>();
 
 var app = builder.Build();
 

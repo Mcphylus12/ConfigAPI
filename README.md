@@ -1,12 +1,7 @@
 ## TODO
 
-- File storage store
-- DB store
-- AMQP notifier
-- File store Notifier to write updated configs to a shred file store for resilient usage
 - Better error handling for schema validation failures
 - Use stores for schemas
-
 
 ## FE
 - Listing configs

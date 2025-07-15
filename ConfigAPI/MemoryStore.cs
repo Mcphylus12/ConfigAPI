@@ -2,6 +2,11 @@ public class MemoryStore : IConfigStore
 {
     private Dictionary<string, string> data = [];
 
+    public Task<bool> Exists(string configKey)
+    {
+        return Task.FromResult(data.ContainsKey(configKey));
+    }
+
     public Task<string?> Get(string configKey)
     {
         return Task.FromResult(data.TryGetValue(configKey, out var c) ? c : null);
