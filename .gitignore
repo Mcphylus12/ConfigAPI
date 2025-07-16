@@ -483,3 +483,4 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 /ConfigAPI/configs
+/ConfigAPI/schemas
