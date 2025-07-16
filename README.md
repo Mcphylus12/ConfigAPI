@@ -1,7 +1,6 @@
 ## TODO
 
-- Better error handling for schema validation failures
-- Use stores for schemas
+- How to manage schema validation when parents are changed
 
 ## FE
 - Listing configs

@@ -1,6 +1,7 @@
 ﻿using Json.Schema;
 using System.IO;
 using System.Text.Json.Nodes;
+using static SchemaValidationResult;
 
 namespace ConfigAPI;
 
@@ -10,17 +11,29 @@ public interface ISchemaService
     Task<IEnumerable<JsonSchema>> Get(string configKey);
     Task<IEnumerable<JsonSchema>> Get();
     Task<JsonSchema?> GetFromSchemaKey(string schemaKey);
+    Task<bool> Exists(string configKey);
 }
 
 public class SchemaService : ISchemaService
 {
     private SchemaTree root = new SchemaTree();
+    private readonly IStore store;
 
-    public Task Set(string configKey, JsonNode updateDoc)
+    public SchemaService([FromKeyedServices("schemaStore")] IStore store)
+    {
+        this.store = store;
+
+        foreach (var item in store.List().Result)
+        {
+            Set(item.Replace("_x_", "*"), JsonNode.Parse(store.Get(item).Result!)!).Wait();
+        }
+    }
+
+    public async Task Set(string configKey, JsonNode updateDoc)
     {
         var schema = new JsonSchema(updateDoc, configKey);
         root.Add(configKey.Split("."), schema);
-        return Task.CompletedTask;
+        await store.Set(configKey.Replace("*", "_x_"), updateDoc.ToJsonString());
     }
 
     public Task<IEnumerable<JsonSchema>> Get(string configKey)
@@ -43,6 +56,11 @@ public class SchemaService : ISchemaService
 
         return Task.FromResult<IEnumerable<JsonSchema>>(results);
     }
+
+    public Task<bool> Exists(string configKey)
+    {
+        return Task.FromResult(root.GetSchema(configKey.Split(".")) != null);
+    }
 }
 
 public class JsonSchema
@@ -64,11 +82,22 @@ public class JsonSchema
 
     internal async Task<SchemaValidationResult> Validate(JsonNode fullNewConfig)
     {
-        var result = schema.Evaluate(fullNewConfig);
+        var result = schema.Evaluate(fullNewConfig, new EvaluationOptions
+        {
+            OutputFormat = OutputFormat.List
+        });
 
         return new SchemaValidationResult
         {
-            Ok = result.IsValid
+            Ok = result.IsValid,
+            Errors = new List<ValidationError>
+            {
+                new ValidationError
+                {
+                    SchemaName = configKey,
+                    Errors = result.Details.Where(d => d.HasErrors).SelectMany(d => d.Errors).ToDictionary()
+                }
+            }
         };
     }
 }

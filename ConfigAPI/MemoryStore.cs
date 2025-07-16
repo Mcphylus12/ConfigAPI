@@ -1,4 +1,4 @@
-public class MemoryStore : IConfigStore
+public class MemoryStore : IStore
 {
     private Dictionary<string, string> data = [];
 

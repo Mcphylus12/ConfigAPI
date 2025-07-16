@@ -6,13 +6,18 @@ internal class StartupConfigLoader : BackgroundService
 {
     private readonly ISchemaService schemaService;
     private readonly IConfigService configService;
-    private readonly IConfigStore configStore;
+    private readonly IStore configStore;
+    private readonly IStore schemaStore;
 
-    public StartupConfigLoader(ISchemaService schemaService, IConfigService configService, IConfigStore configStore)
+    public StartupConfigLoader(ISchemaService schemaService, IConfigService configService, 
+        [FromKeyedServices("configStore")]IStore configStore,
+        [FromKeyedServices("schemaStore")]IStore schemaStore
+        )
     {
         this.schemaService = schemaService;
         this.configService = configService;
         this.configStore = configStore;
+        this.schemaStore = schemaStore;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -22,7 +27,10 @@ internal class StartupConfigLoader : BackgroundService
         foreach (var item in schemaDir.EnumerateFiles())
         {
             var configKey = Path.GetFileNameWithoutExtension(item.Name).Replace("_x_", "*");
-            await schemaService.Set(configKey, JsonNode.Parse(await File.ReadAllTextAsync(item.FullName))!);
+            if (!await schemaService.Exists(configKey))
+            {
+                await schemaService.Set(configKey, JsonNode.Parse(await File.ReadAllTextAsync(item.FullName))!);
+            }
         }
 
         var configDir = new DirectoryInfo("./Boot/Configs");

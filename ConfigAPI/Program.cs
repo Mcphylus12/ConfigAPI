@@ -22,7 +22,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IConfigCache, MemoryConfigCache>();
 builder.Services.AddSingleton<IConfigService, ConfigService>();
 builder.Services.AddSingleton<ISchemaService, SchemaService>();
-builder.Services.AddSingleton<IConfigStore>(new FileStore("./configs"));
+builder.Services.AddKeyedSingleton<IStore>("configStore", new FileStore("./configs"));
+builder.Services.AddKeyedSingleton<IStore>("schemaStore", new FileStore("./schemas"));
 builder.Services.AddHostedService<StartupConfigLoader>();
 builder.Services.AddTransient<IUpdateNotifier, ConsoleNotifier>();
 
@@ -67,8 +68,15 @@ app.MapGet("/api/{configKey}", async ([FromRoute] string configKey, [FromService
 
 app.MapPost("/api/{configKey}", async ([FromRoute] string configKey, [FromBody]JsonNode updateDoc, [FromServices] IConfigService configService) =>
 {
-    await configService.Set(configKey, updateDoc);
-    return Results.Ok();
+    try
+    {
+        await configService.Set(configKey, updateDoc);
+        return Results.Ok();
+    }
+    catch (SchemaValidationException sve)
+    {
+        return Results.BadRequest(sve.Result);
+    }
 });
 
 

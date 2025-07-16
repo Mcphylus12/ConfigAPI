@@ -1,7 +1,7 @@
 ﻿
 namespace ConfigAPI;
 
-public class FileStore : IConfigStore
+public class FileStore : IStore
 {
     private readonly string baseDir;
 
@@ -29,9 +29,9 @@ public class FileStore : IConfigStore
         }
     }
 
-    public Task<IEnumerable<string>> List()
+    public async Task<IEnumerable<string>> List()
     {
-        return Task.FromResult(Directory.EnumerateFiles(baseDir));
+        return Directory.EnumerateFiles(baseDir).Select(f => Path.GetFileName(f));
     }
 
     public Task Set(string configKey, string v)

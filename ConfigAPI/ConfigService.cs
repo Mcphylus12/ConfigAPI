@@ -4,11 +4,11 @@ using System.Text.Json.Nodes;
 public class ConfigService : IConfigService
 {
     private readonly IConfigCache cache;
-    private readonly IConfigStore store;
+    private readonly IStore store;
     private readonly IEnumerable<IUpdateNotifier> notifiers;
     private readonly ISchemaService schemaService;
 
-    public ConfigService(IConfigCache cache, IConfigStore store, IEnumerable<IUpdateNotifier> notifiers, ISchemaService schemaService)
+    public ConfigService(IConfigCache cache, [FromKeyedServices("configStore")] IStore store, IEnumerable<IUpdateNotifier> notifiers, ISchemaService schemaService)
     {
         this.cache = cache;
         this.store = store;
@@ -85,8 +85,10 @@ public class ConfigService : IConfigService
 
             SchemaValidationResult result = new SchemaValidationResult()
             {
-                Ok = true
+                Ok = true,
+                Errors = []
             };
+
             foreach (var schema in schemas)
             {
                 result.Add(await schema.Validate(fullNewConfig));
