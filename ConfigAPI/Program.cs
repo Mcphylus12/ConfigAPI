@@ -19,13 +19,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<IConfigCache, MemoryConfigCache>();
-builder.Services.AddSingleton<IConfigService, ConfigService>();
-builder.Services.AddSingleton<ISchemaService, SchemaService>();
-builder.Services.AddKeyedSingleton<IStore>("configStore", new FileStore("./configs"));
-builder.Services.AddKeyedSingleton<IStore>("schemaStore", new FileStore("./schemas"));
-builder.Services.AddHostedService<StartupConfigLoader>();
-builder.Services.AddTransient<IUpdateNotifier, ConsoleNotifier>();
+builder.Services.AddHostedService<BootLoader>();
 
 var app = builder.Build();
 
@@ -35,49 +29,57 @@ app.UseCors();
 
 app.MapGet("/", () => Results.Content(site, MediaTypeNames.Text.Html));
 
-app.MapPost("/api/schema/{configKey}", async ([FromRoute] string configKey, [FromBody] JsonNode updateDoc, [FromServices] ISchemaService schemaService) =>
-{
-    await schemaService.Set(configKey, updateDoc);
-    return Results.Ok();
-});
+//MapSchemaRoutes(app);
 
-app.MapGet("/api/schema", async ([FromServices] ISchemaService schemaService) =>
-{
-    var schemas = await schemaService.Get();
-    return Results.Ok(schemas.Select(schema => schema.Key));
-});
-
-app.MapGet("/api/schema/{configKey}", async ([FromRoute] string configKey, [FromServices] ISchemaService schemaService) =>
-{
-    var schema = await schemaService.GetFromSchemaKey(configKey);
-
-    if (schema is null) return Results.NotFound();
-
-    return Results.Ok(schema.Node);
-});
-
-app.MapGet("/api/configs", async ([FromServices] IConfigService configService) =>
-{
-    return Results.Ok(await configService.List());
-});
-
-app.MapGet("/api/{configKey}", async ([FromRoute] string configKey, [FromServices] IConfigService configService, [FromQuery] bool shallow = false) =>
-{
-    return Results.Ok(await configService.Get(configKey, shallow));
-});
-
-app.MapPost("/api/{configKey}", async ([FromRoute] string configKey, [FromBody]JsonNode updateDoc, [FromServices] IConfigService configService) =>
-{
-    try
-    {
-        await configService.Set(configKey, updateDoc);
-        return Results.Ok();
-    }
-    catch (SchemaValidationException sve)
-    {
-        return Results.BadRequest(sve.Result);
-    }
-});
+MapConfigRoutes(app);
 
 
 app.Run();
+
+//static void MapSchemaRoutes(WebApplication app)
+//{
+//    app.MapPost("/api/config/{configKey}", async ([FromRoute] string configKey, [FromBody] JsonNode updateDoc, [FromServices] ISchemaService configService) =>
+//    {
+//        await configService.Set(configKey, new JsonSchema(updateDoc));
+//        return Results.Ok();
+//    });
+
+//    app.MapGet("/api/config", async ([FromServices] ISchemaService configService, [FromQuery] string? prefix) =>
+//    {
+//        var configs = await configService.List(prefix);
+//        return Results.Ok(configs);
+//    });
+
+//    app.MapGet("/api/config/{configKey}", async ([FromRoute] string configKey, [FromServices] ISchemaService configService) =>
+//    {
+//        var config = await configService.Get(configKey);
+//        if (config is null) return Results.NotFound();
+//        return Results.Ok(config.ToJsonString());
+//    });
+
+//    app.MapDelete("/api/config/{configKey}", ([FromRoute] string configKey, [FromServices] ISchemaService configService) => configService.Delete(configKey));
+//}
+
+static void MapConfigRoutes(WebApplication app)
+{
+    app.MapPost("/api/config/{configKey}", async ([FromRoute] string configKey, [FromBody] JsonNode updateDoc, [FromServices] ConfigService configService) =>
+    {
+        await configService.Set(configKey, new JsonConfig(updateDoc));
+        return Results.Ok();
+    });
+
+    app.MapGet("/api/config", async ([FromServices] ConfigService configService, [FromQuery] string? prefix) =>
+    {
+        var configs = await configService.List(prefix);
+        return Results.Ok(configs);
+    });
+
+    app.MapGet("/api/config/{configKey}", async ([FromRoute] string configKey, [FromQuery]bool shallow = false, [FromServices] ConfigService configService) =>
+    {
+        var config = await configService.Get(configKey, shallow);
+        if (config is null) return Results.NotFound();
+        return Results.Ok(config.ToJsonString());
+    });
+
+    app.MapDelete("/api/config/{configKey}", ([FromRoute] string configKey, [FromServices] ConfigService configService) => configService.Delete(configKey));
+}

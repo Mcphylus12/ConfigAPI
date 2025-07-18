@@ -17,8 +17,4 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Boot\Configs\" />
-  </ItemGroup>
-
 </Project>

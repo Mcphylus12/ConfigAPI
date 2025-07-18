@@ -1,15 +1,7 @@
+
+
 ## TODO
-
-- How to manage schema validation when parents are changed
-
-## FE
-- Listing configs
-- working with Schemas
-
-## Phase 2
-- *STRETCH* Define preset "expected" configurations and populate open api spec for them wiith correct request/response data
-- From "expected" config have frontend create a easier to use UI 
-- configKey dot seperation repped as breadcrumbs
+- FE
 
 ## Overview
 
