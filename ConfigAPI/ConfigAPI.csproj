@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="boot\config\product.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="boot\config\product.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="JsonSchema.Net" Version="7.3.4" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
   </ItemGroup>

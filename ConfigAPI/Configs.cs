@@ -7,6 +7,8 @@ public class JsonConfig
 {
     private readonly JsonNode node;
 
+    public JsonNode Object => node;
+
     public JsonConfig(JsonNode node)
     {
         this.node = node;

@@ -15,6 +15,6 @@ internal class BootLoader : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await bootConfigStore.TransferTo(configStore);
+        await bootConfigStore.TransferTo(configStore, s => s.EndsWith(".json") ? Path.GetFileNameWithoutExtension(s) : s);
     }
 }

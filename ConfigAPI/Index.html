@@ -10,19 +10,27 @@
 <body v-scope @vue:mounted="mounted" v-cloak>
     <h2 class="title" @click="toggle()">Config Api</h2>
     <div class="container">
-        <div class="clear left section" v-if="shallowConfig != null">
-            <textarea v-model="shallowConfig" class="fill"></textarea>
+        <div class="clear left section">
+            <h5>Editable configuration for currently loaded key</h5>
+            <textarea v-if="shallowConfig != null" v-model="shallowConfig" class="fill"></textarea>
         </div>
-        <div class="right section" v-if="fullConfig != null">
-            <pre>{{ fullConfig }}</pre>
+        <div class="right section">
+            <h5>Search results/The full rendered config for currently loaded key</h5>
+            <pre v-if="fullConfig != null">{{ fullConfig }}</pre>
         </div>
-        <div class="bottom section relative">
-            <input type="text" v-model="configPath" />
-            <button @click="loadConfig()">
-                Load
+        <div class="bottom section relative buttons">
+            <input type="text" v-model="configPath" placeholder="Config key or search prefix"/>
+            <button @click="search()">
+                Search (uses input as search prefix if populated)
+            </button>
+            <button @click="get()">
+                Load (uses input as key. set a key that doesnt exist to stop making a new config)
             </button>
             <button @click="save()">
-                Save
+                Save (uses input as key)
+            </button>
+            <button @click="deletee()">
+                Delete (uses input as key. No confirmation)
             </button>
         </div>
     </div>
@@ -33,30 +41,45 @@
         import { createApp } from 'https://unpkg.com/petite-vue?module'
 
         createApp({
-          configPath: null,
-          fullConfig: null,
-          shallowConfig: null,
-          mounted() {
-          },
-          loadConfig() {
-            fetch("/api/"+this.configPath)
-                .then((data) => data.json())
-                .then(res => this.fullConfig = res);
-            fetch("/api/"+this.configPath+"?shallow=true")
-                .then((data) => data.json())
-                .then(res => this.shallowConfig = JSON.stringify(res, null, 2));
-          },
-          save() {
-            const myHeaders = new Headers();
-            myHeaders.append("Content-Type", "application/json");
+            configPath: null,
+            fullConfig: null,
+            shallowConfig: null,
+            mounted() { },
+            search() {
+                const query = this.configPath != null ? "?prefix=" + this.configPath : "";
+                fetch("/api/config" + query)
+                    .then((data) => data.json())
+                    .then(res => this.fullConfig = res);
+            },
+            get() {
+                fetch("/api/config/"+this.configPath)
+                    .then((data) => data.json())
+                    .then(res => this.fullConfig = res);
+                fetch("/api/config/"+this.configPath+"?shallow=true")
+                    .then((data) => data.json())
+                    .then(res => this.shallowConfig = JSON.stringify(res, null, 2));
+            },
+            save() {
+                const myHeaders = new Headers();
+                myHeaders.append("Content-Type", "application/json");
 
-            fetch("/api/"+this.configPath, {
+                fetch("/api/config/"+this.configPath, {
                     method: "POST",
                     body: this.shallowConfig,
                     headers: myHeaders,
                 })
-                .then((data) => this.loadConfig());
-          }
+                .then((data) => this.get());
+            },
+            deletee() {
+                fetch("/api/config/" + this.configPath, {
+                    method: "DELETE"
+                })
+                .then((data) => {
+                    this.configPath = null;
+                    this.fullConfig = null;
+                    this.shallowConfig = null;
+                });
+            }
         }).mount()
     </script>
     <style>
@@ -77,7 +100,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 3fr 1fr;
-            height: 100vh;
+            height: 91.8vh;
             width: 100%;
             align-content: stretch;
             background-color: var(--clr-bg);
@@ -90,11 +113,22 @@
 
         .fill {
             width: 100%;
-            height: 100%;
+            height: 80%;
             border: 0;
             padding: 0;
             resize: none;
         }
+
+        input[type=text], select {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
 
         .section {
             border: 1px solid var(--clr-accent);
@@ -111,13 +145,6 @@
 
         .file {
             cursor: default;
-        }
-
-        .fileentry {
-            position: relative;
-            margin-bottom: 0.2rem;
-            box-sizing: border-box;
-            transition: scale 0.1s linear;
         }
 
             .fileentry .name {
@@ -141,11 +168,6 @@
 
             .fileentry:nth-child(odd) {
                 background-color: var(--clr-bg2);
-            }
-
-            .fileentry:hover {
-                border: 1px solid var(--clr-accent);
-                scale: 102%;
             }
 
         .title {
@@ -212,6 +234,12 @@
             flex: 1 0 auto;
         }
 
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
         [v-cloak] {
             display: none;
         }

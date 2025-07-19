@@ -20,6 +20,8 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddOpenApi();
 builder.Services.AddHostedService<BootLoader>();
+builder.Services.AddSingleton<IStore>(new FileStore("."));
+builder.Services.AddSingleton<ConfigService>();
 
 var app = builder.Build();
 
@@ -74,11 +76,11 @@ static void MapConfigRoutes(WebApplication app)
         return Results.Ok(configs);
     });
 
-    app.MapGet("/api/config/{configKey}", async ([FromRoute] string configKey, [FromQuery]bool shallow = false, [FromServices] ConfigService configService) =>
+    app.MapGet("/api/config/{configKey}", async ([FromRoute] string configKey, [FromServices] ConfigService configService, [FromQuery] bool shallow = false) =>
     {
         var config = await configService.Get(configKey, shallow);
         if (config is null) return Results.NotFound();
-        return Results.Ok(config.ToJsonString());
+        return Results.Ok(config.Object);
     });
 
     app.MapDelete("/api/config/{configKey}", ([FromRoute] string configKey, [FromServices] ConfigService configService) => configService.Delete(configKey));
